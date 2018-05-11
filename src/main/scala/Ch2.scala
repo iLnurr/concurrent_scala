@@ -1,5 +1,3 @@
-import scala.annotation.tailrec
-
 object Ch2 extends App {
   def thread(body: => Unit) = {
     val t = new Thread {
@@ -61,7 +59,7 @@ object Ch2 extends App {
 
   }
 
-  periodically(1000)(log("work "))
+//  periodically(1000)(log("work "))
 
   /** #3 */
   class SyncVar1[T] {
@@ -85,4 +83,51 @@ object Ch2 extends App {
       }
     }
   }
+
+  /** #4 */
+  class SyncVar2[T] {
+    private var empty = true
+    private var value: Option[T] = None
+
+    def isEmpty: Boolean = synchronized(empty)
+    def nonEmpty: Boolean = synchronized(!empty)
+    def get(): T = this.synchronized {
+      if (empty) {
+        throw new RuntimeException("is empty")
+      } else {
+        log(s"get ${value}")
+        empty = true
+        value.get
+      }
+    }
+
+    def put(x: T): Unit = this.synchronized {
+      if (!empty) {
+        throw new RuntimeException("non empty")
+      } else {
+        log(s"put ${x}")
+        value = Some(x)
+        empty = false
+      }
+    }
+  }
+
+  val syncVar = new SyncVar2[Int]()
+
+  val producer = thread {
+    var x = 0
+    while (x < 15) {
+      if (syncVar.isEmpty) {
+        syncVar.put(x)
+        x += 1
+      }
+    }
+  }
+
+  val consumer = thread {
+    while (true) if (syncVar.nonEmpty) syncVar.get()
+  }
+
+  producer.join()
+  consumer.join()
 }

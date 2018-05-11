@@ -95,6 +95,53 @@ object Ch2 extends App {
       if (empty) {
         throw new RuntimeException("is empty")
       } else {
+        log(s"get2 = ${value}")
+        empty = true
+        value.get
+      }
+    }
+
+    def put(x: T): Unit = this.synchronized {
+      if (!empty) {
+        throw new RuntimeException("non empty")
+      } else {
+        log(s"put2 = ${x}")
+        value = Some(x)
+        empty = false
+      }
+    }
+  }
+
+  val syncVar2 = new SyncVar2[Int]()
+
+  val producer2 = thread {
+    var x = 0
+    while (x < 15) {
+      if (syncVar2.isEmpty) {
+        syncVar2.put(x)
+        x += 1
+      }
+    }
+  }
+
+  val consumer2 = thread {
+    while (true) if (syncVar2.nonEmpty) syncVar2.get()
+  }
+
+  producer2.join()
+  consumer2.join()
+
+  /** #5 */
+  class SyncVar3[T] {
+    private var empty = true
+    private var value: Option[T] = None
+
+    def isEmpty: Boolean = synchronized(empty)
+    def nonEmpty: Boolean = synchronized(!empty)
+    def get(): T = this.synchronized {
+      if (empty) {
+        throw new RuntimeException("is empty")
+      } else {
         log(s"get ${value}")
         empty = true
         value.get
@@ -110,24 +157,44 @@ object Ch2 extends App {
         empty = false
       }
     }
-  }
 
-  val syncVar = new SyncVar2[Int]()
-
-  val producer = thread {
-    var x = 0
-    while (x < 15) {
-      if (syncVar.isEmpty) {
-        syncVar.put(x)
-        x += 1
+    def getWait(): T = this.synchronized {
+      while (empty) {
+        this.wait()
       }
+      empty = true
+      this.notify()
+      log(s"get3 =  ${value}")
+      value.get
+    }
+
+    def putWait(x: T): Unit = this.synchronized {
+      while (!empty) {
+        this.wait()
+      }
+      empty = false
+      this.notify()
+      log(s"put3 = ${x}")
+      value = Some(x)
     }
   }
 
-  val consumer = thread {
-    while (true) if (syncVar.nonEmpty) syncVar.get()
+  val syncVar3 = new SyncVar3[Int]()
+
+  val producer3 = thread {
+    var x = 0
+    while (x < 15) {
+      syncVar3.putWait(x)
+      x += 1
+    }
   }
 
-  producer.join()
-  consumer.join()
+  val consumer3 = thread {
+    while (true) syncVar3.getWait()
+  }
+
+  producer3.join()
+  consumer3.join()
+
+
 }

@@ -1,3 +1,4 @@
+import scala.annotation.tailrec
 
 object Ch2 extends App {
   def thread(body: => Unit) = {
@@ -23,28 +24,35 @@ object Ch2 extends App {
     result
   }
 
+  /** #1 */
   def parallel[A,B] (a: => A, b: => B): (A,B) = {
-    val resA = threadWithResult(a)
-    val resB = threadWithResult(b)
-    val maybePair = for {
-      a <- resA
-      b <- resB
-    } yield (a,b)
+    var aV: Option[A] = None
+    var bV: Option[B] = None
 
-    assert(maybePair.isDefined, "Both result must be defined")
+    val t1 = thread {
+      aV = Some(a)
+      log(s"${aV.toString}")
+    }
+    val t2 = thread {
+      bV = Some(b)
+      log(s"${bV.toString}")
+    }
+    t1.join()
+    t2.join()
 
-    maybePair.get
+    (aV.get, bV.get)
   }
 
   val tuple = parallel("aa", "bb")
 
-  def periodically(duration: Long)(b: => Unit) = {
+  /** #2 */
+  def periodically(duration: Long)(block: => Unit) = {
     val worker = new Thread() {
       override def run(): Unit = {
         while (true) {
           log("sleep")
           Thread.sleep(duration)
-          b
+          block
         }
       }
     }
@@ -54,4 +62,27 @@ object Ch2 extends App {
   }
 
   periodically(1000)(log("work "))
+
+  /** #3 */
+  class SyncVar1[T] {
+    var isEmpty = true
+    var value: Option[T] = None
+    def get(): T = this.synchronized {
+      if (isEmpty) {
+        throw new RuntimeException("is empty")
+      } else {
+        isEmpty = true
+        value.get
+      }
+    }
+
+    def put(x: T): Unit = this.synchronized {
+      if (!isEmpty) {
+        throw new RuntimeException("non empty")
+      } else {
+        value = Some(x)
+        isEmpty = false
+      }
+    }
+  }
 }

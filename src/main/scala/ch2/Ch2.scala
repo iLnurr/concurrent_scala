@@ -1,6 +1,6 @@
 package ch2
 
-object Ch2 extends App {
+object Ch2 {
   object first {
     /** #1 */
     def parallel[A,B] (a: => A, b: => B): (A,B) = {
@@ -186,4 +186,45 @@ object Ch2 extends App {
     consumer3.join()
   }
 
+
+  /**
+    * The send method in the Deadlocks section was used to transfer money between
+    * the two accounts. The sendAll method takes a set accounts of bank accounts
+    * and a target bank account, and transfers all the money from every account in
+    * accounts to the target bank account. The sendAll method has the following
+    * signature:
+    * def sendAll(accounts: Set[Account], target: Account): Unit
+    * Implement the sendAll method and ensure that a deadlock cannot occur.
+    */
+  import SynchronizedProtectedUid.getUniqueId
+  class Account(val name: String, var money: Int) {
+    val uid = getUniqueId()
+  }
+
+  def send(a1: Account, a2: Account, n: Int) {
+    def adjust() {
+      a1.money -= n
+      a2.money += n
+    }
+    if (a1.uid < a2.uid)
+      a1.synchronized { a2.synchronized { adjust() } }
+    else a2.synchronized { a1.synchronized { adjust() } }
+  }
+
+  def sendAll(accounts: Set[Account], target: Account): Unit = {
+    accounts.foldLeft(target){ (targetAcc, rethd) =>
+      send(rethd, targetAcc, rethd.money)
+      targetAcc
+    }
+  }
+
+}
+
+object SynchronizedProtectedUid {
+  var uidCount = 0L
+  def getUniqueId() = this.synchronized {
+    val freshUid = uidCount + 1
+    uidCount = freshUid
+    freshUid
+  }
 }

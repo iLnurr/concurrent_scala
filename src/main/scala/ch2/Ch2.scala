@@ -1,5 +1,7 @@
 package ch2
 
+import scala.collection.mutable
+
 object Ch2 {
   object first {
     /** #1 */
@@ -186,7 +188,19 @@ object Ch2 {
     consumer3.join()
   }
 
+}
 
+object SynchronizedProtectedUid {
+  var uidCount = 0L
+  def getUniqueId() = this.synchronized {
+    val freshUid = uidCount + 1
+    uidCount = freshUid
+    freshUid
+  }
+}
+
+
+object Accounts {
   /**
     * The send method in the Deadlocks section was used to transfer money between
     * the two accounts. The sendAll method takes a set accounts of bank accounts
@@ -217,14 +231,64 @@ object Ch2 {
       targetAcc
     }
   }
-
 }
 
-object SynchronizedProtectedUid {
-  var uidCount = 0L
-  def getUniqueId() = this.synchronized {
-    val freshUid = uidCount + 1
-    uidCount = freshUid
-    freshUid
+object SynchronizedPool extends App {
+  private val tasks = mutable.Queue[() => Unit]()
+  object Worker extends Thread {
+    setDaemon(true)
+    def poll() = tasks.synchronized {
+      while (tasks.isEmpty) tasks.wait()
+      tasks.dequeue()
+    }
+    override def run() = while (true) {
+      val task = poll()
+      task()
+    }
   }
+  Worker.start()
+  def asynchronous(body: =>Unit) = tasks.synchronized {
+    tasks.enqueue(() => body)
+    tasks.notify()
+  }
+  asynchronous { log("Hello ") }
+  asynchronous { log("World!") }
+  Thread.sleep(500)
+}
+
+object PriorityTaskPool extends App {
+  /**
+    * Recall the asynchronous method from the Guarded blocks section. This method
+    * stores the tasks in a First In First Out (FIFO) queue; before a submitted task is
+    * executed, all the previously submitted tasks need to be executed. In some cases,
+    * we want to assign priorities to tasks so that a high-priority task can execute as
+    * soon as it is submitted to the task pool. Implement a PriorityTaskPool class
+    * that has the asynchronous method with the following signature:
+    * def asynchronous(priority: Int)(task: =>Unit): Unit
+    * A single worker thread picks tasks submitted to the pool and executes them.
+    * Whenever the worker thread picks a new task from the pool for execution,
+    * that task must have the highest priority in the pool.
+    */
+  private val tasks = mutable.ArrayBuffer[(() => Unit, Int)]()
+  object Worker extends Thread {
+    setDaemon(true)
+    def poll() = tasks.synchronized {
+      while (tasks.isEmpty) tasks.wait()
+      val priorTask = tasks.maxBy(_._2)
+      tasks -= priorTask
+      priorTask._1
+    }
+    override def run() = while (true) {
+      val task = poll()
+      task()
+    }
+  }
+  Worker.start()
+  def asynchronous(priority: Int)(body: =>Unit) = tasks.synchronized {
+    tasks += (() => body, priority)
+    tasks.notify()
+  }
+  asynchronous(1) { log("Hello ") }
+  asynchronous(5) { log("World!") }
+  Thread.sleep(500)
 }

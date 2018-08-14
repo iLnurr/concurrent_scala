@@ -2,6 +2,7 @@ package ch2
 
 import ch2._
 import Ch2._
+import Accounts._
 
 object AccountTest extends App {
   val range = (1 to 1000)

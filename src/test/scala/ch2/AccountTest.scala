@@ -1,7 +1,5 @@
 package ch2
 
-import ch2._
-import Chapter2._
 import Accounts._
 
 object AccountTest extends App {

@@ -1,7 +1,7 @@
 package ch2
 
 import ch2._
-import Ch2._
+import Chapter2._
 import Accounts._
 
 object AccountTest extends App {
@@ -13,6 +13,7 @@ object AccountTest extends App {
   sendAll(testAccounts.toSet, targetAccount)
 
   require(targetAccount.money == expectedResult, s"transfer incorrect! ${targetAccount}")
+  require(testAccounts.map(_.money).sum == 0, "all money from accounts must be transferred")
 
   println(expectedResult)
 

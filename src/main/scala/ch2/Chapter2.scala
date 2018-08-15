@@ -275,16 +275,17 @@ object PriorityTaskPool extends App {
     def poll() = tasks.synchronized {
       while (tasks.isEmpty) tasks.wait()
       val priorTask = tasks.maxBy(_._2)
+      val (task, priority) = priorTask
       tasks -= priorTask
-      priorTask._1
+      task()
     }
     override def run() = while (true) {
       val task = poll()
-      task()
+      task
     }
   }
   Worker.start()
-  def asynchronous(priority: Int)(body: =>Unit) = tasks.synchronized {
+  def asynchronous(priority: Int)(body: =>Unit): Unit = tasks.synchronized {
     tasks += (() => body, priority)
     tasks.notify()
   }

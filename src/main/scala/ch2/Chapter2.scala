@@ -277,11 +277,11 @@ object PriorityTaskPool extends App {
       val priorTask = tasks.maxBy(_._2)
       val (task, priority) = priorTask
       tasks -= priorTask
-      task()
+      task
     }
     override def run() = while (true) {
       val task = poll()
-      task
+      task()
     }
   }
   Worker.start()

@@ -300,7 +300,7 @@ object PriorityTaskPoolExtended extends App {
     * supports any number of worker threads p . The parameter p is specified in the
     * constructor of the PriorityTaskPool class.
     */
-  class PriorityTaskPool(p: Int) {
+  class PriorityTaskPoolExtended(p: Int) {
     private val tasks = mutable.ArrayBuffer[(() => Unit, Int)]()
 
     class Worker extends Thread {
@@ -311,6 +311,46 @@ object PriorityTaskPoolExtended extends App {
         val (task, priority) = priorTask
         tasks -= priorTask
         task
+      }
+      override def run() = while (true) {
+        val task = poll()
+        task()
+      }
+    }
+
+    def createWorkers(): Unit = {
+      (1 to p).foreach(_ => new Worker().start())
+    }
+    createWorkers()
+
+    def asynchronous(priority: Int)(body: =>Unit): Unit = tasks.synchronized {
+      tasks += (() => body, priority)
+      tasks.notify()
+    }
+  }
+}
+
+object PriorityTaskPoolWithImportant extends App {
+  /**
+    * Extend the PriorityTaskPool class from the previous exercise so that it
+    * supports the shutdown method:
+    * def shutdown(): Unit
+    * When the shutdown method is called, all the tasks with the priorities greater
+    * than important must be completed, and the rest of the tasks must be
+    * discarded. The important integer parameter is specified in the constructor
+    * of the PriorityTaskPool class.
+    */
+  class PriorityTaskPoolImportant(p: Int, important: Int) {
+    private val tasks = mutable.ArrayBuffer[(() => Unit, Int)]()
+
+    class Worker extends Thread {
+      setDaemon(true)
+      def poll() = tasks.synchronized {
+        while (tasks.isEmpty) tasks.wait()
+        val priorTask = tasks.maxBy(_._2)
+        val (task, priority) = priorTask
+        tasks -= priorTask
+        if (priority >= important) task else () => ()
       }
       override def run() = while (true) {
         val task = poll()

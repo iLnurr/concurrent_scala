@@ -411,5 +411,21 @@ object ConcurrentBiMap extends App {
     def iterator: Iterator[(K, V)] = lock.synchronized {
       f.iterator
     }
+
+    /**
+      * Add a replace method to the concurrent bidirectional map from the previous
+      * exercise. The method should atomically replace a key-value pair with another
+      * key-value pair:
+      */
+    def replace(k1: K, v1: V, k2: K, v2: V): Unit = lock.synchronized {
+      f.get(k1).map { v =>
+        if (v == v1) {
+          f -= k1
+          r -= v
+          f += (k2 -> v2)
+          r += (v2 -> k2)
+        }
+      }
+    }
   }
 }

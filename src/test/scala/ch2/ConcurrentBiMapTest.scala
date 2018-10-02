@@ -41,6 +41,6 @@ object ConcurrentBiMapTest extends App{
 
   val end = System.currentTimeMillis()
 
-  log(s"${end - begin}")
+  log(s"${end - begin} millis")
 
 }

@@ -293,3 +293,39 @@ object PriorityTaskPool extends App {
   asynchronous(5) { log("World!") }
   Thread.sleep(500)
 }
+
+object PriorityTaskPoolExtended extends App {
+  /**
+    * Extend the PriorityTaskPool class from the previous exercise so that it
+    * supports any number of worker threads p . The parameter p is specified in the
+    * constructor of the PriorityTaskPool class.
+    */
+  class PriorityTaskPool(p: Int) {
+    private val tasks = mutable.ArrayBuffer[(() => Unit, Int)]()
+
+    class Worker extends Thread {
+      setDaemon(true)
+      def poll() = tasks.synchronized {
+        while (tasks.isEmpty) tasks.wait()
+        val priorTask = tasks.maxBy(_._2)
+        val (task, priority) = priorTask
+        tasks -= priorTask
+        task
+      }
+      override def run() = while (true) {
+        val task = poll()
+        task()
+      }
+    }
+
+    def createWorkers(): Unit = {
+      (1 to p).foreach(_ => new Worker().start())
+    }
+    createWorkers()
+
+    def asynchronous(priority: Int)(body: =>Unit): Unit = tasks.synchronized {
+      tasks += (() => body, priority)
+      tasks.notify()
+    }
+  }
+}

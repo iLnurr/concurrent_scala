@@ -363,9 +363,53 @@ object PriorityTaskPoolWithImportant extends App {
     }
     createWorkers()
 
-    def asynchronous(priority: Int)(body: =>Unit): Unit = tasks.synchronized {
+    def asynchronous(priority: Int)(body: => Unit): Unit = tasks.synchronized {
       tasks += (() => body, priority)
       tasks.notify()
+    }
+  }
+}
+
+object ConcurrentBiMap extends App {
+  /**
+    * Implement a ConcurrentBiMap collection, which is a concurrent bidirectional
+    * map. The invariant is that every key is mapped to exactly one value, and vice
+    * versa. Operations must be atomic. The concurrent bidirectional map has the
+    * following interface:
+    * Make sure that your implementation prevents deadlocks from occurring in
+    * the map.
+    */
+
+  class ConcurrentBiMap[K, V] {
+    private val lock = Array()
+    private val f = mutable.Map[K,V]()
+    private val r = mutable.Map[V,K]()
+
+    def put(k: K, v: V): Option[(K, V)] = lock.synchronized {
+      f += (k -> v)
+      r += (v -> k)
+      Some((k,v))
+    }
+    def removeKey(k: K): Option[V] = lock.synchronized {
+      f.get(k).map { v =>
+        f -= k
+        r -= v
+        v
+      }
+    }
+    def removeValue(v: V): Option[K] = lock.synchronized {
+      r.get(v).map { k =>
+        f -= k
+        r -= v
+        k
+      }
+    }
+
+    def getValue(k: K): Option[V] = f.get(k)
+    def getKey(v: V): Option[K] = r.get(v)
+    def size: Int = lock.synchronized(f.size)
+    def iterator: Iterator[(K, V)] = lock.synchronized {
+      f.iterator
     }
   }
 }

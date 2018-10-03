@@ -429,3 +429,35 @@ object ConcurrentBiMap extends App {
     }
   }
 }
+
+object Cache {
+  /**
+    * Implement a cache method, which converts any function into a memoized version of itself. The first time that the resulting function is called for any argument, it is called in the same way as the original function. However, the result is memoized, and subsequently invoking the resulting function with the same arguments must return the previously returned value:
+    * Make sure that your implementation works correctly when the resulting function is called simultaneously from multiple threads.
+    */
+  class Cache[K,V] {
+    private val map = mutable.Map[K ⇒ V, Vector[(K,V)]]()
+    def cache(f: K ⇒ V): K ⇒ V = k ⇒ {
+      map.synchronized {
+        map.get(f) match {
+          case Some(underlying) ⇒
+            underlying.find {
+              case (key, _) ⇒ key == k
+            }.
+              map(_._2).getOrElse(
+                add(f, k, underlying)
+              )
+          case None ⇒
+            add(f, k)
+        }
+      }
+    }
+
+    private def add(f: K ⇒ V, k: K, old: Vector[(K,V)] = Vector.empty[(K,V)]) = {
+      val result = f(k)
+      log(s"add f:$f and key:$k")
+      map += (f → (old ++ Vector((k, result))))
+      result
+    }
+  }
+}

@@ -1,4 +1,4 @@
-package object ch2 {
+package object conc {
   def thread(body: => Unit) = {
     val t = new Thread {
       override def run(): Unit = body

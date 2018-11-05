@@ -1,4 +1,4 @@
-package ch2
+package conc
 
 import scala.collection.mutable
 

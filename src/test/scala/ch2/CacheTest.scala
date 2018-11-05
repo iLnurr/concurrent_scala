@@ -1,6 +1,6 @@
-package ch2
+package conc
 
-import ch2.Cache.Cache
+import conc.Cache.Cache
 
 object CacheTest extends App {
   val ins = new Cache[Int, Int]()

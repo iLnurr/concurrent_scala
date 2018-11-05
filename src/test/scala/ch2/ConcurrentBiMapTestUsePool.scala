@@ -1,7 +1,7 @@
-package ch2
+package conc
 
 import ConcurrentBiMap._
-import ch2.PriorityTaskPoolExtended._
+import conc.PriorityTaskPoolExtended._
 
 object ConcurrentBiMapTestUsePool extends App{
   val map = new ConcurrentBiMap[String, String]()

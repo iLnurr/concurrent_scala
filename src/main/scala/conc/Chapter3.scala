@@ -54,4 +54,50 @@ object Chapter3 {
       }
     }
   }
+
+  /**
+    * Реализуйте класс ConcurrentSortedList – абстракцию конкурентного сортиро-
+    * ванного списка:
+    * class ConcurrentSortedList[T](implicit val ord: Ordering[T]) {
+    * def add(x: T): Unit = ???
+    * def iterator: Iterator[T] = ???
+    * }
+    * Внутренне класс ConcurrentSortedList должен использовать связанный спи-
+    * сок атомарных ссылок. Ваша реализация не должна блокировать вызываю-
+    * щий поток и исключать вероятность проблемы ABA.
+    * Объект Iterator , возвращаемый методом iterator , должен правильно вы-
+    * полнять обход элементов списка в порядке возрастания при условии отсут-
+    * ствия конкурентных вызовов метода add .
+    */
+  object Ex3 {
+    class ConcurrentSortedList[T](implicit val ord: Ordering[T]) {
+      private val underlying = List[AtomicReference[Option[T]]](new AtomicReference[Option[T]](None))
+      def add(x: T, list: List[AtomicReference[Option[T]]]): Unit = list match {
+        case List(head) ⇒
+          head.get() match {
+            case None ⇒
+              if (!head.compareAndSet(None, Some(x))) add(x, list)
+            case Some(old) ⇒
+              if (ord.compare(old, x) <= 0) {
+                new AtomicReference[Option[T]](Some(x)) :: list
+              } else {
+                list ::: List(new AtomicReference[Option[T]](Some(x)))
+              }
+          }
+        case h :: t ⇒
+          h.get() match {
+            case None ⇒
+              if (!h.compareAndSet(None, Some(x))) add(x, list)
+            case Some(old) ⇒
+              if (ord.compare(old, x) <= 0) {
+                new AtomicReference[Option[T]](Some(x)) :: list
+              } else {
+                add(x, t)
+              }
+          }
+
+      }
+      def iterator: Iterator[T] = ???
+    }
+  }
 }

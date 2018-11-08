@@ -72,7 +72,7 @@ object Chapter3 {
   object Ex3 {
     class ConcurrentSortedList[T](implicit val ord: Ordering[T]) {
       private val underlying = List[AtomicReference[Option[T]]](new AtomicReference[Option[T]](None))
-      def add(x: T, list: List[AtomicReference[Option[T]]]): Unit = list match {
+      private def add(x: T, list: List[AtomicReference[Option[T]]]): Unit = list match {
         case List(head) ⇒
           head.get() match {
             case None ⇒
@@ -97,7 +97,36 @@ object Chapter3 {
           }
 
       }
-      def iterator: Iterator[T] = ???
+
+      def add(x: T): Unit = add(x, underlying)
+
+      def iterator: Iterator[T] = new Iterator[T] {
+        private var current = underlying
+        override def hasNext: Boolean = current.isEmpty
+
+        override def next(): T = {
+          current match {
+            case Nil ⇒
+              throw new NoSuchElementException("next on empty iterator")
+            case List(single) ⇒
+              current = Nil
+              single.get() match {
+                case None ⇒
+                  throw new NoSuchElementException("next on empty iterator")
+                case Some(el) ⇒
+                  el
+              }
+            case h :: t ⇒
+              current = t
+              h.get() match {
+                case None ⇒
+                  throw new NoSuchElementException("next on empty iterator")
+                case Some(el) ⇒
+                  el
+              }
+          }
+        }
+      }
     }
   }
 }

@@ -88,9 +88,7 @@ object Chapter3 {
             val hv = h.get()
             hv match {
               case None ⇒
-                val isLess = t.headOption.flatMap(_.get().map(ord.compare(x, _) <= 0)).getOrElse(true)
-
-                if (isLess) {
+                if (t.nonEmpty && t.head.get().nonEmpty && ord.compare(x, t.head.get().get) <= 0) {
                   if (!h.compareAndSet(hv, Some(x))) addIn(x, acc, list) else acc.toList ++ list
                 } else {
                   addIn(x, acc += h, t)

@@ -79,7 +79,7 @@ object Chapter3 {
         def addIn(x: T, list: List[AtomicReference[Option[T]]]): List[AtomicReference[Option[T]]] ={
           list match {
             case Nil ⇒
-              throw new IllegalStateException("Underlying list must be non empty")
+              addIn(x, empty :: list)
             case h :: t ⇒
               val hv = h.get()
               hv match {
@@ -89,13 +89,13 @@ object Chapter3 {
                   if (isLess) {
                     if (!h.compareAndSet(hv, Some(x))) addIn(x, list) else list
                   } else {
-                    if (t.isEmpty) h :: addIn(x, empty :: t) else h :: addIn(x, t)
+                    h :: addIn(x, t)
                   }
                 case Some(old) ⇒
                   if (ord.compare(x, old) <= 0) {
                     addIn(x, empty :: list)
                   } else {
-                    if (t.isEmpty) h :: addIn(x, empty :: t) else h :: addIn(x, t)
+                    h :: addIn(x, t)
                   }
               }
           }

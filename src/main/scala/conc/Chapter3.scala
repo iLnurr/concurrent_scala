@@ -4,6 +4,7 @@ import java.util.concurrent.Executor
 import java.util.concurrent.atomic.AtomicReference
 
 import scala.annotation.tailrec
+import scala.collection.mutable.ListBuffer
 
 object Chapter3 {
 
@@ -75,10 +76,14 @@ object Chapter3 {
 
       private val ar = new AtomicReference(List[AtomicReference[Option[T]]](empty))
 
-      def addIn(x: T, list: List[AtomicReference[Option[T]]]): List[AtomicReference[Option[T]]] ={
+      @tailrec final def addIn(x: T,
+                acc: ListBuffer[AtomicReference[Option[T]]],
+                list: List[AtomicReference[Option[T]]]): List[AtomicReference[Option[T]]] ={
         list match {
           case Nil ⇒
-            addIn(x, empty :: list)
+            val nv = empty
+            nv.compareAndSet(None, Some(x))
+            acc.toList ++ (nv :: list)
           case h :: t ⇒
             val hv = h.get()
             hv match {
@@ -86,15 +91,17 @@ object Chapter3 {
                 val isLess = t.headOption.flatMap(_.get().map(ord.compare(x, _) <= 0)).getOrElse(true)
 
                 if (isLess) {
-                  if (!h.compareAndSet(hv, Some(x))) addIn(x, list) else list
+                  if (!h.compareAndSet(hv, Some(x))) addIn(x, acc, list) else acc.toList ++ list
                 } else {
-                  h :: addIn(x, t)
+                  addIn(x, acc += h, t)
                 }
               case Some(old) ⇒
                 if (ord.compare(x, old) <= 0) {
-                  addIn(x, empty :: list)
+                  val nv = empty
+                  nv.compareAndSet(None, Some(x))
+                  acc.toList ++ (nv :: list)
                 } else {
-                  h :: addIn(x, t)
+                  addIn(x, acc += h, t)
                 }
             }
         }
@@ -102,7 +109,7 @@ object Chapter3 {
 
       def add(x: T): Unit = {
         val list = ar.get()
-        val added = addIn(x, list)
+        val added = addIn(x, ListBuffer(), list)
         if (!ar.compareAndSet(list, added)) add(x)
       }
 

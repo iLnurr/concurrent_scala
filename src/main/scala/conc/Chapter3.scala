@@ -71,51 +71,48 @@ object Chapter3 {
     */
   object Ex3 {
     class ConcurrentSortedList[T](implicit val ord: Ordering[T]) {
-      private val underlying = List[AtomicReference[Option[T]]](new AtomicReference[Option[T]](None))
-      private def add(x: T, list: List[AtomicReference[Option[T]]]): Unit = list match {
-        case List(head) ⇒
-          head.get() match {
-            case None ⇒
-              if (!head.compareAndSet(None, Some(x))) add(x, list)
-            case Some(old) ⇒
-              if (ord.compare(old, x) <= 0) {
-                new AtomicReference[Option[T]](Some(x)) :: list
-              } else {
-                list ::: List(new AtomicReference[Option[T]](Some(x)))
-              }
-          }
-        case h :: t ⇒
-          h.get() match {
-            case None ⇒
-              if (!h.compareAndSet(None, Some(x))) add(x, list)
-            case Some(old) ⇒
-              if (ord.compare(old, x) <= 0) {
-                new AtomicReference[Option[T]](Some(x)) :: list
-              } else {
-                add(x, t)
-              }
-          }
+      def empty = new AtomicReference[Option[T]](None)
 
+      private val ar = new AtomicReference(List[AtomicReference[Option[T]]](empty))
+
+      def add(x: T): Unit = {
+        def addIn(x: T, list: List[AtomicReference[Option[T]]]): List[AtomicReference[Option[T]]] ={
+          list match {
+            case Nil ⇒
+              throw new IllegalStateException("Underlying list must be non empty")
+            case h :: t ⇒
+              val hv = h.get()
+              hv match {
+                case None ⇒
+                  val isLess = t.headOption.flatMap(_.get().map(cur ⇒ ord.compare(x, cur) <= 0)).getOrElse(true)
+
+                  if (isLess) {
+                    if (!h.compareAndSet(hv, Some(x))) addIn(x, list) else list
+                  } else {
+                    h :: addIn(x, t)
+                  }
+                case Some(old) ⇒
+                  if (ord.compare(x, old) <= 0) {
+                    addIn(x, empty :: list)
+                  } else {
+                    h :: addIn(x, t)
+                  }
+              }
+          }
+        }
+        val list = ar.get()
+        val added = addIn(x, list)
+        if (!ar.compareAndSet(list, added)) add(x)
       }
 
-      def add(x: T): Unit = add(x, underlying)
-
       def iterator: Iterator[T] = new Iterator[T] {
-        private var current = underlying
-        override def hasNext: Boolean = current.isEmpty
+        private var current = ar.get()
+        override def hasNext: Boolean = current.nonEmpty
 
         override def next(): T = {
           current match {
             case Nil ⇒
               throw new NoSuchElementException("next on empty iterator")
-            case List(single) ⇒
-              current = Nil
-              single.get() match {
-                case None ⇒
-                  throw new NoSuchElementException("next on empty iterator")
-                case Some(el) ⇒
-                  el
-              }
             case h :: t ⇒
               current = t
               h.get() match {

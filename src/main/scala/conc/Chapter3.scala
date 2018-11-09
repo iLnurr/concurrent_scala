@@ -75,31 +75,32 @@ object Chapter3 {
 
       private val ar = new AtomicReference(List[AtomicReference[Option[T]]](empty))
 
-      def add(x: T): Unit = {
-        def addIn(x: T, list: List[AtomicReference[Option[T]]]): List[AtomicReference[Option[T]]] ={
-          list match {
-            case Nil ⇒
-              addIn(x, empty :: list)
-            case h :: t ⇒
-              val hv = h.get()
-              hv match {
-                case None ⇒
-                  val isLess = t.headOption.flatMap(_.get().map(ord.compare(x, _) <= 0)).getOrElse(true)
+      def addIn(x: T, list: List[AtomicReference[Option[T]]]): List[AtomicReference[Option[T]]] ={
+        list match {
+          case Nil ⇒
+            addIn(x, empty :: list)
+          case h :: t ⇒
+            val hv = h.get()
+            hv match {
+              case None ⇒
+                val isLess = t.headOption.flatMap(_.get().map(ord.compare(x, _) <= 0)).getOrElse(true)
 
-                  if (isLess) {
-                    if (!h.compareAndSet(hv, Some(x))) addIn(x, list) else list
-                  } else {
-                    h :: addIn(x, t)
-                  }
-                case Some(old) ⇒
-                  if (ord.compare(x, old) <= 0) {
-                    addIn(x, empty :: list)
-                  } else {
-                    h :: addIn(x, t)
-                  }
-              }
-          }
+                if (isLess) {
+                  if (!h.compareAndSet(hv, Some(x))) addIn(x, list) else list
+                } else {
+                  h :: addIn(x, t)
+                }
+              case Some(old) ⇒
+                if (ord.compare(x, old) <= 0) {
+                  addIn(x, empty :: list)
+                } else {
+                  h :: addIn(x, t)
+                }
+            }
         }
+      }
+
+      def add(x: T): Unit = {
         val list = ar.get()
         val added = addIn(x, list)
         if (!ar.compareAndSet(list, added)) add(x)

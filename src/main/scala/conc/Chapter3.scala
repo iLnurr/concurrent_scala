@@ -155,4 +155,27 @@ object Chapter3 {
       )
     }
   }
+
+  /**
+    * Реализуйте класс PureLazyCell с тем же интерфейсом и семантикой, как класс LazyCell из предыдущего упражнения.
+    * Класс PureLazyCell должен предполагать,
+    * что выражение инициализации в параметре не имеет побочных эффектов и может выполняться неоднократно.
+    * Метод apply не должен блокировать вызывающий поток и выполнять ини-
+    * циализацию как можно меньшее количество раз.
+    */
+  object Ex5 {
+    class PureLazyCell[T](initialization: => T) {
+      private val ar = new AtomicReference[Option[T]](None)
+
+      @tailrec
+      final def apply(): T = ar.get match {
+        case Some(v) => v
+        case None => {
+          val v = initialization
+          if (!ar.compareAndSet(None, Some(v))) apply()
+          else v
+        }
+      }
+    }
+  }
 }

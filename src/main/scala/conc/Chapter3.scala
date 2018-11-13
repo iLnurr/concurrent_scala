@@ -132,4 +132,27 @@ object Chapter3 {
       }
     }
   }
+
+  /**
+    * Реализуйте класс LazyCell со следующим интерфейсом:
+    * class LazyCell[T](initialization: =>T) { def apply(): T = ??? }
+    * Создание объекта LazyCell и вызов метода apply должны иметь ту же семантику, как операции объявления значения с отложенной инициализацией и его чтения соответственно.
+    * Вы не должны использовать в своей реализации значений с отложенной инициализацией.
+    */
+  object Ex4 {
+    class LazyCell[T](initialization: => T) {
+      @volatile private var isnt = Option.empty[T]
+      private val lock = Array()
+      def apply(): T = lock.synchronized(
+        isnt match {
+          case None ⇒
+            val t = initialization
+            isnt = Some(t)
+            t
+          case Some(already) ⇒
+            already
+        }
+      )
+    }
+  }
 }

@@ -4,6 +4,7 @@ import java.util.concurrent.Executor
 import java.util.concurrent.atomic.AtomicReference
 
 import scala.annotation.tailrec
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 object Chapter3 {
@@ -176,6 +177,70 @@ object Chapter3 {
           else v
         }
       }
+    }
+  }
+
+  /**
+    * Реализуйте класс SyncConcurrentMap, наследующий интерфейс Map из пакета
+    * scala.collection.concurrent. Для защиты состояния конкурентного словаря
+    * используйте инструкцию synchronized.
+    */
+  object Ex6 {
+    class SyncConcurrentMap[A, B] extends scala.collection.concurrent.Map[A, B] {
+      private val underlying = mutable.Map[A, B]()
+      override def putIfAbsent(k: A, v: B): Option[B] = underlying synchronized(
+        underlying.get(k) match {
+          case None ⇒
+            underlying.put(k,v)
+          case Some(old) ⇒
+            Some(old)
+        }
+      )
+
+      override def remove(k: A, v: B): Boolean = underlying synchronized(
+        underlying.get(k) match {
+          case Some(old) if old == v ⇒
+            underlying.remove(k)
+            true
+          case None ⇒
+            false
+        }
+      )
+
+      override def replace(k: A, oldvalue: B, newvalue: B): Boolean = underlying synchronized(
+        underlying.get(k) match {
+          case Some(x) if x == oldvalue ⇒
+            underlying.put(k, newvalue)
+            true
+          case _ ⇒
+            false
+        }
+      )
+
+      override def replace(k: A, v: B): Option[B] = underlying synchronized{
+        underlying.get(k) map { old ⇒
+          underlying += (k → v)
+          old
+        }
+      }
+
+      override def +=(kv: (A, B)): SyncConcurrentMap.this.type = underlying synchronized{
+        underlying.put(kv._1, kv._2)
+        this
+      }
+
+      override def -=(key: A): SyncConcurrentMap.this.type = underlying synchronized{
+        underlying.remove(key)
+        this
+      }
+
+      override def get(key: A): Option[B] = underlying synchronized(
+        underlying.get(key)
+      )
+
+      override def iterator: Iterator[(A, B)] = underlying synchronized(
+        underlying.iterator
+      )
     }
   }
 }

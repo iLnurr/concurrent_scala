@@ -1,10 +1,14 @@
 package conc
 
+import java.util.concurrent.ConcurrentHashMap
+
 import scala.concurrent.{Await, Future, Promise}
 import scala.io.Source
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.async.Async._
+import scala.collection.concurrent
+import scala.collection.concurrent.TrieMap
 import scala.concurrent._
 import scala.util.control.NonFatal
 
@@ -109,6 +113,52 @@ object Chapter4 {
         } recover {
           case _ => false
         }
+    }
+  }
+
+  /**
+    * Реализуйте класс IMap, представляющий словарь с поддержкой однократного присваивания:
+    class IMap[K, V] {
+      def update(k: K, v: V): Unit
+      def apply(k: K): Future[V]
+    }
+    * Пары ключ/значение могут добавляться в объект IMap, но никогда – удаляться или изменяться.
+    * Каждый конкретный ключ можно добавить в словарь только один раз,
+    * и все последующие вызовы update с этим же ключом должны возбуждать исключение.
+    * Вызов apply с конкретным ключом должен возвращать объект Future,
+    * который завершится после добавления этого ключа в словарь.
+    * Помимо объектов Future и Promise в реализации можно использовать класс scala.collection.concurrent.Map.
+    */
+  object Ex7 {
+    class AlreadyAssocKeyException(msg: String) extends RuntimeException(msg)
+    trait IMap[K, V] {
+      val underlying: scala.collection.concurrent.Map[K,Promise[V]]
+      def update(k: K, v: V): Unit = {
+        underlying.get(k) match {
+          case Some(old) if old.isCompleted ⇒
+            throw new AlreadyAssocKeyException(s"Key $k already assoc")
+          case Some(nonCompletedPromise) ⇒
+            val pr = nonCompletedPromise.success(v)
+            underlying.put(k, pr)
+          case None ⇒
+            underlying.put(k, Promise.successful(v))
+        }
+      }
+      def apply(k: K): Future[V] = {
+        underlying.get(k) match {
+          case Some(value) ⇒
+            value.future
+          case None ⇒
+            val pr = Promise[V]
+            underlying.put(k, pr)
+            pr.future
+        }
+      }
+    }
+
+    class IMapImpl[K,V] extends IMap[K,V] {
+      import scala.collection.convert.decorateAsScala._
+      override val underlying: concurrent.Map[K, Promise[V]] = new ConcurrentHashMap[K, Promise[V]]().asScala
     }
   }
 

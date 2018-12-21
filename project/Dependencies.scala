@@ -14,4 +14,8 @@ object Dependencies {
   lazy val cats = Seq(
     "org.typelevel" %% "cats-core" % Versions.cats
   )
+  
+  lazy val scalaAsync = Seq(
+    "org.scala-lang.modules" %% "scala-async" % "0.9.7"
+  )
 }

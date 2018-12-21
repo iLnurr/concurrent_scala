@@ -4,8 +4,12 @@ import scala.concurrent.{Await, Future, Promise}
 import scala.io.Source
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
+import scala.async.Async._
+import scala.concurrent._
+import scala.util.control.NonFatal
 
 object Chapter4 {
+  def delay(n: Int): Future[Unit] = async { blocking { Thread.sleep(n * 1000) } }
   /**
     * Реализуйте программу командной строки,
     * предлагающую пользователю ввести URL некоторого веб-сайта и
@@ -62,6 +66,49 @@ object Chapter4 {
         )
       }
       def :=(x: T): Unit = if (!p.trySuccess(x)) p.failure(new IllegalStateException("Already completed"))
+    }
+  }
+
+  /**
+    * Добавьте в тип Future[T] метод exists, принимающий предикат и возвращающий объект Future[Boolean]:
+    * def exists(p: T => Boolean): Future[Boolean]
+    * Возвращаемый объект Future завершится со значением true,
+    * только если завершится оригинальный объект Future и предикат вернет true,
+    * иначе – со значением false.
+    * Вы можете использовать комбинаторы, но не должны создавать никаких объектов Promise.
+    */
+  object Ex3 {
+    implicit class FutureExistsPredOps[T](val f: Future[T]) extends AnyVal {
+      def exists(p: T => Boolean): Future[Boolean] = f.map(p).recover{case NonFatal(_) ⇒ false }
+    }
+  }
+
+  /**
+    * Повторите предыдущее упражнение, но вместо комбинаторов используйте объекты Promise.
+    */
+  object Ex4 {
+    implicit class FutureExistsPredOps[T](val f: Future[T]) extends AnyVal {
+      def exists(p: T => Boolean): Future[Boolean] = {
+        val promise = Promise[Boolean]
+        f.foreach(t ⇒ promise.success(p(t)))
+        f.failed.foreach(_ ⇒ promise.success(false))
+        promise.future
+      }
+    }
+  }
+
+  /**
+    * Повторите предыдущее упражнение с использованием фреймворка Scala Async.
+    */
+  object Ex5 {
+    implicit class FutureExistsPredOps[T](val f: Future[T]) {
+      def exists(p: T => Boolean): Future[Boolean] =
+        async {
+          val v = await(f)
+          p(v)
+        } recover {
+          case _ => false
+        }
     }
   }
 

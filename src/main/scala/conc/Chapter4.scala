@@ -10,6 +10,7 @@ import scala.async.Async._
 import scala.collection.concurrent
 import scala.collection.concurrent.TrieMap
 import scala.concurrent._
+import scala.util.{Failure, Success}
 import scala.util.control.NonFatal
 
 object Chapter4 {
@@ -159,6 +160,28 @@ object Chapter4 {
     class IMapImpl[K,V] extends IMap[K,V] {
       import scala.collection.convert.decorateAsScala._
       override val underlying: concurrent.Map[K, Promise[V]] = new ConcurrentHashMap[K, Promise[V]]().asScala
+    }
+  }
+
+  /**
+    * Добавьте в тип Promise[T] метод compose, принимающий функцию типа S => T и возвращающий объект Promise[S]:
+      def compose[S](f: S => T): Promise[S]
+    * Всякий раз, когда возвращаемый объект Promise завершается с некоторым значением x типа S (или с ошибкой),
+    * оригинальный объект Promise должен асинхронно завершиться со значением f(x) (или с ошибкой),
+    * если оригинальный объект Promise еще не завершился.
+    */
+  object Ex8 {
+    implicit class PromiseComposeOps[T](val pt: Promise[T]) extends AnyVal {
+      def compose[S](f: S => T): Promise[S] = {
+        val ps = Promise[S]
+
+        ps.future.onComplete{
+          case Success(s) ⇒ pt.trySuccess(f(s))
+          case Failure(e) ⇒ pt.tryFailure(e)
+        }
+
+        ps
+      }
     }
   }
 

@@ -185,4 +185,24 @@ object Chapter4 {
     }
   }
 
+  /**
+    * Реализуйте метод scatterGather, принимающий последовательность заданий,
+    * выполняющий их параллельно как асинхронные вычисления,
+    * объединяющий результаты и возвращающий объект Future,
+    * который содержит последовательность результатов разных заданий.
+    * Метод scatterGather должен иметь следующий интерфейс:
+      def scatterGather[T](tasks: Seq[() => T]): Future[Seq[T]]
+    */
+  object Ex9 {
+    def scatterGather[T](tasks: Seq[() => T]): Future[Seq[T]] = {
+      Future.sequence(for {
+        task ← tasks
+      } yield {
+        Future(
+          task()
+        )
+      })
+    }
+  }
+
 }

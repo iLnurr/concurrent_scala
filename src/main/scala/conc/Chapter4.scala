@@ -2,6 +2,7 @@ package conc
 
 import java.util.concurrent.ConcurrentHashMap
 
+import scala.annotation.tailrec
 import scala.concurrent.{Await, Future, Promise}
 import scala.io.Source
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -202,6 +203,82 @@ object Chapter4 {
           task()
         )
       })
+    }
+  }
+
+  /**
+    * Реализуйте другую версию метода timeout, представленного в этой главе,
+    * но без использования конструкции blocking или Thread.sleep.
+    * Используйте класс java.util.Timer из JDK.
+    * Какими преимуществами обладает новая реализация?
+    */
+  object Ex10 {
+    import java.util._
+    private val timer = new Timer(true)
+    def timeout(t: Long): Future[Unit] = {
+      val p = Promise[Unit]
+      timer.schedule(
+        new TimerTask {
+          def run() = {
+            p success ()
+            timer.cancel() }
+        }, t)
+      p.future
+    }
+  }
+
+  /**
+    * Ориентированный граф – это структура данных, состоящая из конечно- го количества узлов,
+    * каждый из которых имеет конечное количество направленных ребер, соединяющих его с другими узлами.
+    * Ориентированный ациклический граф – это ориентированный граф, в котором любой путь из любого узла N
+    * в любой другой узел по направленным ребрам не приведет обратно в узел N.
+    * Иными словами, ориентированные ребра в ориентированном ациклическом графе никогда не образуют замкнутых циклов.
+    * Вот как можно было бы представить узлы в ориентированном ациклическом графе:
+    class DAG[T](val value: T) {
+      val edges = scala.collection.mutable.Set[DAG[T]]
+    }
+    * Вот пример объявления графа:
+    val a = new DAG("a")
+    val b = new DAG("b")
+    val c = new DAG("c")
+    val d = new DAG("d")
+    val e = new DAG("e")
+
+    a.edges += b
+    b.edges += c
+    b.edges += d
+    c.edges += e
+    d.edges += e
+    *
+    * Ориентированные ациклические графы часто используются для описания зависимостей между разными элементами,
+    * например заданий для инструментов сборки в проекте или в IDE.
+    * Вы должны реализовать метод fold, принимающий узел графа и функцию,
+    * отображающую каждый элемент и его входные данные в некоторое значение,
+    * который возвращает метод Future со значением узла:
+      def fold[T, S](g: DAG[T], f: (T, Seq[S]) => S): Future[S]
+    * Метод fold должен запустить асинхронное задание для каждого узла в графе,
+    * чтобы отобразить элемент и его входные данные в новое значение.
+    * Зависимости между элементами обязательно должны учитываться: элемент может запускаться только после выполнения
+    * всех его зависимостей. Например, задание b можно запустить только после того, как задания c и d вернут результат.
+    */
+  object Ex11 {
+    class DAG[T](val value: T) {
+      val edges = scala.collection.mutable.Set[DAG[T]]()
+    }
+
+    def fold[T, S](g: DAG[T], f: (T, Seq[S]) => S): Future[S] = {
+//      @tailrec
+      def recur(gg: DAG[T]): S = gg.edges match {
+        case empty if empty.isEmpty ⇒
+          f(gg.value, Nil)
+        case nonEmpty ⇒
+          f(
+            gg.value,
+            nonEmpty.map(recur).toSeq
+          )
+      }
+
+      Future(recur(g))
     }
   }
 

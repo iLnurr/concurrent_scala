@@ -1,6 +1,6 @@
 package conc
 
-object ChEx9Test extends App {
+object Ch4Ex9Test extends App {
   def first: () ⇒ String = {
     log("first begin")
     Thread.sleep(1000)

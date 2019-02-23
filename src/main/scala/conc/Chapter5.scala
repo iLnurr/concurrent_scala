@@ -24,4 +24,37 @@ object Chapter5 {
     }
     alphanumeric
   }
+
+  /** Реализуйте программу параллельного отображения множества Мандельброта (Mandelbrot). */
+  //https://github.com/non/spire/blob/master/examples/src/main/scala/spire/example/mandelbrot.scala
+
+  case class Point(x: Int, y: Int) {
+    def mandelbrot(): String = {
+      def calc: Boolean = x / y == 1 // TODO fun to calc mandelbroth for each point
+      if (calc) " * " else " . "
+    }
+  }
+
+  case class Line(points: Seq[Point])
+
+  case class Matrix(lines: Seq[Line]) {
+    def printFun(fun: Point ⇒ String): Unit = {
+      lines.foreach{l ⇒
+        println()
+        print(l.points.map(fun).mkString(""))
+      }
+    }
+  }
+  object Matrix {
+    def apply(limit: Int = 100, begin: Int = 1): Matrix = Matrix(for {
+      x ← begin until (begin + limit)
+    } yield {
+      val points = for {
+        y ← begin until (begin + limit)
+      } yield {
+        Point(x,y)
+      }
+      Line(points)
+    })
+  }
 }

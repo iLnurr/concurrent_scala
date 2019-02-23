@@ -39,8 +39,8 @@ object Chapter4 {
 
     def run() = {
       val urlS = recurUrl()
-      val future = Future(Source.fromURL(urlS).mkString)
-      val timer = mytimer(println("."),1,10)
+      val future = Future(Source.fromURL(urlS).mkString) recover {case ex ⇒ println(ex.getLocalizedMessage)}
+      val timer = mytimer(() ⇒ println("."),1,10)
       val html = Await.result(future, 2.seconds)
       timer.cancel()
       println(s"html:\n $html")

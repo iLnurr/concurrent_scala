@@ -16,12 +16,12 @@ package object conc {
 
   def log(msg: String): Unit = println(s"${Thread.currentThread().getName} $msg")
 
-  def mytimer(f: Unit, delay: Long = 0, period: Long = 50): Timer = {
+  def mytimer(f: () ⇒ Unit, delay: Long = 0, period: Long = 50): Timer = {
     val timer = new Timer()
 
     timer.schedule(
       new TimerTask {
-        def run() = f
+        def run() = f()
       },
       delay,
       period

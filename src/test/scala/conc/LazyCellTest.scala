@@ -2,11 +2,13 @@ package conc
 
 import conc.Chapter3.Ex4.LazyCell
 
+import scala.util.Random
+
 object LazyCellTest extends App {
   def func = {
     log("start...")
     Thread.sleep(10000)
-    s"Calculation by ${Thread.currentThread().getName}"
+    s"Calculation by ${Thread.currentThread().getName} ${Random.nextInt()}"
   }
 
   val a = new LazyCell[String](func)

@@ -1,6 +1,7 @@
 package conc
 
 import scala.collection.immutable.{Range, Stream}
+import scala.collection.parallel.ParSeq
 import scala.util.Random
 
 object Chapter5 {
@@ -35,7 +36,7 @@ object Chapter5 {
     }
   }
 
-  case class Line(points: Seq[Point])
+  case class Line(points: ParSeq[Point])
 
   case class Matrix(lines: Seq[Line]) {
     def printFun(fun: Point ⇒ String): Unit = {
@@ -46,15 +47,17 @@ object Chapter5 {
     }
   }
   object Matrix {
-    def apply(limit: Int = 100, begin: Int = 1): Matrix = Matrix(for {
-      x ← begin until (begin + limit)
-    } yield {
-      val points = for {
-        y ← begin until (begin + limit)
+    def apply(limit: Int = 1000, begin: Int = 1): Matrix = Matrix {
+      val range = begin until (begin + limit)
+      for {
+        x ← range
       } yield {
-        Point(x,y)
+        Line(for {
+          y ← range.par
+        } yield {
+          Point(x,y)
+        })
       }
-      Line(points)
-    })
+    }
   }
 }

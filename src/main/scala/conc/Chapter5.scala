@@ -1,6 +1,12 @@
 package conc
 
+import java.io.FileOutputStream
+import java.util.concurrent.atomic.{AtomicReference, AtomicReferenceArray}
+
+import scala.annotation.tailrec
 import scala.collection.immutable.{Range, Stream}
+import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 import scala.collection.parallel.ParSeq
 import scala.util.Random
 
@@ -96,5 +102,50 @@ object Chapter5 {
         })
       }
     }
+  }
+
+
+  /**
+    * Биномиальная куча (binomial heap),
+    * описанная в докторской диссертации «Purely Functional Data Structures» Криса Окасаки (Chris Okasaki),
+    * – это неизменяемая структура данных,
+    * которая эффективно реализует приоритетную очередь с четырьмя основными операциями: вставка элемента,
+    * поиск наименьшего элемента, удаление наименьшего элемента и слияние двух биномиальных куч:
+    * Реализуйте класс BinomialHeap.
+    * Затем реализуйте сплиттеры и комбинаторы для биномиальной кучи и переопределите операцию par.
+    */
+  class BinomialHeap[T] extends Iterable[T] {
+    private val underlying = new AtomicReference[mutable.ArrayBuffer[T]](ArrayBuffer.empty[T])
+    def insert(x: T): BinomialHeap[T] = {
+      @tailrec def retry(): BinomialHeap[T] = {
+        val arr = underlying.get()
+        val newArr = arr :+ x
+        if (!underlying.compareAndSet(arr, newArr)) retry() else this
+      }
+      retry()
+    }
+    def remove(implicit ord: Ordering[T]): (T, BinomialHeap[T]) = {
+      @tailrec def retry(): (T,BinomialHeap[T]) = {
+        val arr = underlying.get()
+        val toRm = arr.min
+        val newArr = arr.filterNot(_ == toRm)
+        if (!underlying.compareAndSet(arr, newArr)) retry() else (toRm,this)
+      }
+      retry()
+    }
+    def smallest(implicit ord: Ordering[T]): T = {
+      underlying.get().min
+    }
+    def merge(that: BinomialHeap[T]): BinomialHeap[T] = {
+      @tailrec def retry(): BinomialHeap[T] = {
+        val thisArr = underlying.get()
+        val thatArr = that.underlying.get()
+        val newArr = thisArr ++ thatArr
+        if (!underlying.compareAndSet(thisArr, newArr)) retry() else this
+      }
+      retry()
+    }
+
+    override def iterator: Iterator[T] = underlying.get().iterator
   }
 }

@@ -7,7 +7,7 @@ import scala.annotation.tailrec
 import scala.collection.immutable.{Range, Stream}
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
-import scala.collection.parallel.ParSeq
+import scala.collection.parallel.{IterableSplitter, ParIterable, ParSeq, SeqSplitter}
 import scala.util.Random
 
 object Chapter5 {
@@ -114,8 +114,8 @@ object Chapter5 {
     * Реализуйте класс BinomialHeap.
     * Затем реализуйте сплиттеры и комбинаторы для биномиальной кучи и переопределите операцию par.
     */
-  class BinomialHeap[T] extends Iterable[T] {
-    private val underlying = new AtomicReference[mutable.ArrayBuffer[T]](ArrayBuffer.empty[T])
+  class BinomialHeap[T] extends ParIterable[T] {
+    private val underlying = new AtomicReference[ArrayBuffer[T]](ArrayBuffer.empty[T])
     def insert(x: T): BinomialHeap[T] = {
       @tailrec def retry(): BinomialHeap[T] = {
         val arr = underlying.get()
@@ -146,6 +146,37 @@ object Chapter5 {
       retry()
     }
 
-    override def iterator: Iterator[T] = underlying.get().iterator
+    override def seq: Iterable[T] = underlying.get()
+
+    override def splitter: IterableSplitter[T] = {
+      val arr = underlying.get()
+      new TSplitter[T](arr, 0, arr.size)
+    }
+
+    override def size: Int = underlying.get().size
+  }
+  class TSplitter[T](val arr: ArrayBuffer[T], var i: Int, val limit: Int) extends SeqSplitter[T] {
+    override def dup: SeqSplitter[T] = new TSplitter[T](arr, i, limit)
+    override def split: Seq[SeqSplitter[T]] = {
+      val rem = remaining
+      if (rem >= 2) psplit(rem / 2, rem - rem / 2) else Seq(this)
+    }
+    override def psplit(sizes: Int*): Seq[SeqSplitter[T]] = {
+      val result = for (sz <- sizes) yield {
+        val newLimit = (i + sz).min(limit)
+        val newSplitter = new TSplitter[T](arr, i, newLimit)
+        i = newLimit
+        newSplitter
+      }
+
+      if (i == limit) result else result :+ new TSplitter(arr, i, limit)
+    }
+    override def remaining: Int = limit - i
+    override def hasNext: Boolean = i < limit
+    override def next(): T = {
+      val r = arr(i)
+      i += 1
+      r
+    }
   }
 }

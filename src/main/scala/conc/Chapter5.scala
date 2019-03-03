@@ -1,7 +1,7 @@
 package conc
 
 import java.io.FileOutputStream
-import java.util.concurrent.atomic.{AtomicReference, AtomicReferenceArray}
+import java.util.concurrent.atomic.{AtomicInteger, AtomicLong, AtomicReference, AtomicReferenceArray}
 
 import scala.annotation.tailrec
 import scala.collection.immutable.{Range, Stream}
@@ -116,32 +116,53 @@ object Chapter5 {
     */
   class BinomialHeap[T] extends ParIterable[T] {
     private val underlying = new AtomicReference[ArrayBuffer[T]](ArrayBuffer.empty[T])
-    def insert(x: T): BinomialHeap[T] = {
+    private val minIndexAr = new AtomicInteger(-1)
+    def insertAll(x: T*)(implicit ord: Ordering[T]): BinomialHeap[T] = {
+      x.foreach(insert)
+      this
+    }
+    def insert(x: T)(implicit ord: Ordering[T]): BinomialHeap[T] = {
       @tailrec def retry(): BinomialHeap[T] = {
         val arr = underlying.get()
         val newArr = arr :+ x
-        if (!underlying.compareAndSet(arr, newArr)) retry() else this
+        val minIndex = minIndexAr.get()
+        if (!underlying.compareAndSet(arr, newArr)) {
+          retry()
+        } else {
+          if (minIndex == -1 || ord.lt(x, arr(minIndex))) minIndexAr.set(newArr.indexOf(x))
+          this
+        }
       }
       retry()
     }
     def remove(implicit ord: Ordering[T]): (T, BinomialHeap[T]) = {
       @tailrec def retry(): (T,BinomialHeap[T]) = {
         val arr = underlying.get()
-        val toRm = arr.min
-        val newArr = arr.filterNot(_ == toRm)
-        if (!underlying.compareAndSet(arr, newArr)) retry() else (toRm,this)
+        val minIndex = minIndexAr.get()
+        val toRm = arr(minIndex)
+        val newArr = arr -= toRm
+        if (!underlying.compareAndSet(arr, newArr)) {
+          retry()
+        } else {
+          if (newArr.nonEmpty) minIndexAr.set(newArr.indexOf(newArr.min)) else minIndexAr.set(-1)
+          (toRm, this)
+        }
       }
       retry()
     }
-    def smallest(implicit ord: Ordering[T]): T = {
-      underlying.get().min
+    def smallest: T = {
+      underlying.get()(minIndexAr.get())
     }
     def merge(that: BinomialHeap[T]): BinomialHeap[T] = {
       @tailrec def retry(): BinomialHeap[T] = {
         val thisArr = underlying.get()
         val thatArr = that.underlying.get()
         val newArr = thisArr ++ thatArr
-        if (!underlying.compareAndSet(thisArr, newArr)) retry() else this
+        if (!underlying.compareAndSet(thisArr, newArr)) {
+          retry()
+        } else {
+          this
+        }
       }
       retry()
     }

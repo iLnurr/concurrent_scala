@@ -128,7 +128,7 @@ object Chapter5 {
       @tailrec def retry(): (T,BinomialHeap[T]) = {
         val arr = underlying.get()
         val toRm = arr.min
-        val newArr = arr.filterNot(_ == toRm)
+        val newArr = arr -= toRm
         if (!underlying.compareAndSet(arr, newArr)) retry() else (toRm,this)
       }
       retry()

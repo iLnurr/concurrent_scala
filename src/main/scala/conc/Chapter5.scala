@@ -198,26 +198,18 @@ object Chapter5 {
       case Nil => Nil
       case _ => {
         val negs = list.takeWhile(_ < 0)
-        println(s"negs \n$negs")
         val other = list.dropWhile(_ < 0)
-        println(s"other \n$other")
         require(negs.nonEmpty, "negs must be nonEmpty")
         require(other.nonEmpty && other.size >= negs.size, "poses must be ge that negs")
         val otherAfterPosDropFromLeft = other.dropWhile(_ > 0)
-        println(s"otherAfterPosDropFromLeft \n$otherAfterPosDropFromLeft")
         val droppedFromLeftSize = other.size - otherAfterPosDropFromLeft.size
-        println(s"droppedFromLeftSize \n$droppedFromLeftSize")
-        //  require(otherAfterPosDropFromLeft.size >= droppedFromLeftSize, s"otherAfterPosDropFromLeft.size:${otherAfterPosDropFromLeft.size} must be >= droppedFromLeftSize:$droppedFromLeftSize")
         val needToDropFromRight = negs.size - droppedFromLeftSize
         val rightDropped = otherAfterPosDropFromLeft.takeRight(needToDropFromRight)
         require(rightDropped.size == needToDropFromRight && rightDropped.forall(_ > 0), "rightDropped.size == needToDropFromRight && rightDropped.forall(_ > 0)")
         val otherAfterPosDropFromRight = otherAfterPosDropFromLeft.dropRight(needToDropFromRight)
-        println(s"otherAfterPosDropFromRight \n$otherAfterPosDropFromRight")
         val droppedFromRight = otherAfterPosDropFromLeft.size - otherAfterPosDropFromRight.size
-        println(s"droppedFromRight \n$droppedFromRight")
         require(droppedFromLeftSize + droppedFromRight == negs.size, s"droppedFromLeftSize:$droppedFromLeftSize + droppedFromRight$droppedFromRight must be eq negs.size:${negs.size}")
         val rest = otherAfterPosDropFromRight
-        println(s"rest \n$rest")
         recur(rest)
       }
     }

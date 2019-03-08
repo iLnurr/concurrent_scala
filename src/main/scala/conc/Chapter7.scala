@@ -1,5 +1,8 @@
 package conc
 
+import java.util.concurrent.atomic.AtomicInteger
+
+import scala.concurrent.stm.Txn.RolledBack
 import scala.concurrent.stm._
 
 /** https://nbronson.github.io/scala-stm/quick_start.html */
@@ -64,6 +67,20 @@ object Chapter7 {
     val old = a.take
     a.put(b.take())
     b.put(old)
+  }
+
+  /**
+    * Реализуйте метод atomicRollbackCount , который определяет, сколько откатов
+    * было выполнено в ходе выполнения транзакции, прежде чем она завершилась успехом:
+    * def atomicRollbackCount[T](block: InTxn => T): (T, Int)
+    */
+
+  def atomicRollbackCount[T](block: InTxn => T): (T, Int) = {
+    val counter = new AtomicInteger(0)
+    atomic { implicit txn =>
+      Txn.afterRollback { case RolledBack(_) => counter.addAndGet(1) }
+      block(txn) -> counter.get()
+    }
   }
 
 }

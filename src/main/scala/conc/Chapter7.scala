@@ -83,4 +83,23 @@ object Chapter7 {
     }
   }
 
+  /**
+    * Реализуйте метод atomicWithRetryMax,
+    * запускающий транзакцию с ограниченным количеством повторений (не больше n раз):
+    *
+    * def atomicWithRetryMax[T](n: Int)(block: InTxn => T): T
+    *
+    * По достижении максимального числа повторений должно возбуждаться исключение.
+    */
+
+  case class RetriesException(n: Int) extends RuntimeException(n.toString)
+  def atomicWithRetryMax[T](n: Int)(block: InTxn => T): T = {
+    val retries = new AtomicInteger(0)
+    atomic { implicit txn =>
+      Txn.afterRollback(_ => retries.incrementAndGet())
+      if (retries.get() > n) throw RetriesException(n)
+      block(txn)
+    }
+  }
+
 }

@@ -5,6 +5,9 @@ import eu.timepit.refined.boolean.And
 import eu.timepit.refined.collection.NonEmpty
 import eu.timepit.refined.string.Url
 
+import scala.concurrent.{Await, Future}
+import scala.concurrent.duration._
+
 package object conc {
   def thread(body: => Unit): Thread = {
     val t = new Thread {
@@ -30,18 +33,22 @@ package object conc {
   }
 
   @volatile var dummy: Any = _
-  def timed[T](body: => T): Double = {
+  def timed[T](body: () => T): Double = {
     val start = System.nanoTime
-    dummy = body
+    dummy = body()
     val end = System.nanoTime
     ((end - start) / 1000) / 1000.0
   }
 
-  def warmedTimed[T](n: Int = 200)(body: =>T): Double = {
-    for (_ <- 0 until n) body
-    timed(body)
+  def warmedTimed[T](n: Int = 200)(body: () => T): Double = {
+    val seq = for (_ <- 0 until n) yield timed(body)
+    seq.sum/seq.size
   }
 
   type RefinedUrl = String Refined And[NonEmpty, Url]
   object RefinedUrl extends RefinedTypeOps[RefinedUrl, String]
+
+  implicit class AwaitHelper[R](val f: Future[R]) extends AnyVal {
+    def await(dur: Int = 10): R = Await.result(f,dur.seconds)
+  }
 }

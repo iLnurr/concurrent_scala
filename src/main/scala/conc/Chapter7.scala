@@ -1,7 +1,9 @@
 package conc
 
-import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.{AtomicInteger, AtomicReference}
 
+import scala.collection.immutable.Queue
+import scala.collection.mutable
 import scala.concurrent.stm.Txn.RolledBack
 import scala.concurrent.stm._
 
@@ -99,6 +101,37 @@ object Chapter7 {
       Txn.afterRollback(_ => retries.incrementAndGet())
       if (retries.get() > n) throw RetriesException(n)
       block(txn)
+    }
+  }
+
+  /**
+    * Реализуйте транзакционную очередь FIFO (First In First Out – первым при-
+    * шел, первым вышел) в виде класса TQueue :
+    * class TQueue[T] {
+    *   def enqueue(x: T)(implicit txn: InTxn): Unit = ???
+    *   def dequeue()(implicit txn: InTxn): T = ???
+    * }
+    * Класс TQueue имеет реализацию, схожую с классом scala.collection.mutable.Queue,
+    * с той лишь разницей, что вызов dequeue для пустой очереди должен
+    * блокироваться до появления в ней хотя бы одного элемента.
+    */
+
+  class TQueue[T] {
+    private val ref = Ref[mutable.Queue[T]](mutable.Queue.empty[T])
+    def enqueue(x: T)(implicit txn: InTxn): Unit = {
+      val q = ref.get
+      q.enqueue(x)
+      ref.set(q)
+    }
+    def dequeue()(implicit txn: InTxn): T = {
+      val q = ref.get
+      if (q.isEmpty) {
+        retry
+      } else {
+        val t = q.dequeue()
+        ref.set(q)
+        t
+      }
     }
   }
 

@@ -117,20 +117,18 @@ object Chapter7 {
     */
 
   class TQueue[T] {
-    private val ref = Ref[mutable.Queue[T]](mutable.Queue.empty[T])
+    private val r = Ref[Queue[T]](Queue.empty[T])
     def enqueue(x: T)(implicit txn: InTxn): Unit = {
-      val q = ref.get
-      q.enqueue(x)
-      ref.set(q)
+      r() = r() :+ x
     }
+
     def dequeue()(implicit txn: InTxn): T = {
-      val q = ref.get
-      if (q.isEmpty) {
-        retry
-      } else {
-        val t = q.dequeue()
-        ref.set(q)
-        t
+      r().dequeueOption match {
+        case None => retry
+        case Some((x,q)) => {
+          r() = q
+          x
+        }
       }
     }
   }

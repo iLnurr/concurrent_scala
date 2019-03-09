@@ -8,7 +8,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
 object Ch7Ex5Test extends App {
-  val result = warmedTimed(20)(test)
+  val result = warmedTimed(20000)(test)
 
   log(result.toString)
 

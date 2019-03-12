@@ -1,9 +1,8 @@
 package conc
 
-import java.util.concurrent.atomic.{AtomicInteger, AtomicReference}
+import java.util.concurrent.atomic.AtomicInteger
 
 import scala.collection.immutable.Queue
-import scala.collection.mutable
 import scala.concurrent.stm.Txn.RolledBack
 import scala.concurrent.stm._
 
@@ -130,6 +129,48 @@ object Chapter7 {
           x
         }
       }
+    }
+  }
+
+  /**
+    * Используйте ScalaSTM для реализации потокобезопасного класса TArray­Buffer , наследующего интерфейс scala.collection.mutable.Buffer.
+    */
+
+  class TArrayBuffer[T](initialSize: Int = 8)
+                       (implicit cm: scala.reflect.ClassTag[T]) extends scala.collection.mutable.Buffer[T] {
+    private val underlying = Ref[Array[T]](Array.empty[T])
+    override def apply(n: Int): T = atomic { implicit txn =>
+      underlying().apply(n)
+    }
+    override def update(n: Int, newelem: T): Unit = atomic { implicit txn =>
+      underlying().update(n, newelem)
+      underlying()
+    }
+    override def length: Int = atomic { implicit txn =>
+      underlying().length
+    }
+    override def +=(elem: T): TArrayBuffer.this.type = atomic { implicit txn =>
+      underlying() = if (underlying().isEmpty) Array.apply(elem) else Array.concat(underlying(), Array.apply(elem))
+      this
+    }
+    override def clear(): Unit = atomic { implicit txn =>
+      underlying() = Array.empty[T]
+    }
+    override def +=:(elem: T): TArrayBuffer.this.type = atomic { implicit txn =>
+      underlying() = Array.concat(Array.apply(elem), underlying())
+      this
+    }
+    override def insertAll(n: Int, elems: Traversable[T]): Unit = atomic { implicit txn =>
+      val (before, after) = underlying().splitAt(n)
+      underlying() = Array.concat(before, elems.toArray, after)
+    }
+    override def remove(n: Int): T = atomic { implicit txn =>
+      val rm = underlying().apply(n)
+      underlying() = underlying().take(n) ++ underlying().drop(n+1)
+      rm
+    }
+    override def iterator: Iterator[T] = atomic { implicit txn =>
+      underlying().iterator
     }
   }
 

@@ -174,4 +174,53 @@ object Chapter7 {
     }
   }
 
+  /**
+    * Класс TSortedList хранит данные в порядке сортировки, и для обращения
+    * к последнему элементу требуется обойти все узлы списка, что может ухуд-
+    * шить производительность программы. Для решения этой проблемы
+    * можно использовать AVL-дерево (сбалансированное двоичное дерево поиска).
+    * В Интернете можно найти массу описаний AVL-деревьев. Используйте ScalaSTM,
+    * чтобы реализовать потокобезопасное, сортированное транзакционное множество как AVL-дерево:
+    * class TSortedSet[T] {
+    *   def add(x: T)(implicit txn: InTxn): Unit = ???
+    *   def remove(x: T)(implicit txn: InTxn): Boolean = ???
+    *   def apply(x: T)(implicit txn: InTxn): Boolean = ???
+    * }
+    * Класс TSortedSet имеет схожую семантику с scala.collection.mutable.Set .
+    */
+
+  class TSortedSet[T] {
+    private val underlying = Ref[Set[T]](Set.empty[T])
+    def add(x: T)(implicit txn: InTxn): Unit = atomic { implicit txn =>
+      underlying() = underlying() + x
+    }
+    def remove(x: T)(implicit txn: InTxn): Boolean = atomic { implicit txn =>
+      if (underlying().contains(x)) {
+        underlying() = underlying() - x
+        true
+      } else {
+        false
+      }
+    }
+    def apply(x: T)(implicit txn: InTxn): Boolean = atomic { implicit txn =>
+      if (underlying().contains(x)) {
+        false
+      } else {
+        underlying() = underlying() + x
+        true
+      }
+    }
+  }
+
+  /**
+    * Используйте ScalaSTM для реализации банковской системы, отслеживающей суммы, хранящиеся на счетах клиентов.
+    * Разные потоки могут вызывать
+    * метод send для перевода денег со счета на счет,
+    * метод deposit и
+    * метод withdraw вносят или списывают суммы с конкретных счетов соответственно, а
+    * метод totalStock возвращает общую сумму денег, в данный момент хранящихся на всех счетах в банке.
+    * Наконец, реализуйте
+    * метод totalStockIn , возвращающий общую сумму денег, в данный момент хранящихся на счетах заданной группы банков.
+    */
+
 }

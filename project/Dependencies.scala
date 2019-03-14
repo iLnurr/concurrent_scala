@@ -18,4 +18,8 @@ object Dependencies {
   lazy val scalaAsync = Seq(
     "org.scala-lang.modules" %% "scala-async" % "0.9.7"
   )
+  
+  lazy val scalaStm = Seq(
+    "org.scala-stm" %% "scala-stm" % "0.8"
+  )
 }

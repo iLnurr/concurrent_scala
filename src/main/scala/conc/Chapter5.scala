@@ -1,7 +1,7 @@
 package conc
 
 import java.io.FileOutputStream
-import java.util.concurrent.atomic.{AtomicInteger, AtomicLong, AtomicReference, AtomicReferenceArray}
+import java.util.concurrent.atomic.{AtomicReference, AtomicReferenceArray}
 
 import scala.annotation.tailrec
 import scala.collection.immutable.{Range, Stream}
@@ -116,53 +116,32 @@ object Chapter5 {
     */
   class BinomialHeap[T] extends ParIterable[T] {
     private val underlying = new AtomicReference[ArrayBuffer[T]](ArrayBuffer.empty[T])
-    private val minIndexAr = new AtomicInteger(-1)
-    def insertAll(x: T*)(implicit ord: Ordering[T]): BinomialHeap[T] = {
-      x.foreach(insert)
-      this
-    }
-    def insert(x: T)(implicit ord: Ordering[T]): BinomialHeap[T] = {
+    def insert(x: T): BinomialHeap[T] = {
       @tailrec def retry(): BinomialHeap[T] = {
         val arr = underlying.get()
         val newArr = arr :+ x
-        val minIndex = minIndexAr.get()
-        if (!underlying.compareAndSet(arr, newArr)) {
-          retry()
-        } else {
-          if (minIndex == -1 || ord.lt(x, arr(minIndex))) minIndexAr.set(newArr.indexOf(x))
-          this
-        }
+        if (!underlying.compareAndSet(arr, newArr)) retry() else this
       }
       retry()
     }
     def remove(implicit ord: Ordering[T]): (T, BinomialHeap[T]) = {
       @tailrec def retry(): (T,BinomialHeap[T]) = {
         val arr = underlying.get()
-        val minIndex = minIndexAr.get()
-        val toRm = arr(minIndex)
+        val toRm = arr.min
         val newArr = arr -= toRm
-        if (!underlying.compareAndSet(arr, newArr)) {
-          retry()
-        } else {
-          if (newArr.nonEmpty) minIndexAr.set(newArr.indexOf(newArr.min)) else minIndexAr.set(-1)
-          (toRm, this)
-        }
+        if (!underlying.compareAndSet(arr, newArr)) retry() else (toRm,this)
       }
       retry()
     }
-    def smallest: T = {
-      underlying.get()(minIndexAr.get())
+    def smallest(implicit ord: Ordering[T]): T = {
+      underlying.get().min
     }
     def merge(that: BinomialHeap[T]): BinomialHeap[T] = {
       @tailrec def retry(): BinomialHeap[T] = {
         val thisArr = underlying.get()
         val thatArr = that.underlying.get()
         val newArr = thisArr ++ thatArr
-        if (!underlying.compareAndSet(thisArr, newArr)) {
-          retry()
-        } else {
-          this
-        }
+        if (!underlying.compareAndSet(thisArr, newArr)) retry() else this
       }
       retry()
     }
@@ -200,4 +179,60 @@ object Chapter5 {
       r
     }
   }
+
+  /**
+    * Реализуйте метод parallelBalanceParentheses , возвращающий true , если
+    * каждой открывающей круглой скобке в строке соответствует закрываю-
+    * щая круглая скобка (и наоборот). То есть при просмотре строки слева на-
+    * право количество встреченных открывающих скобок всегда должно быть
+    * больше или равно количеству встреченных закрывающих скобок, и общее
+    * количество открывающих скобок в конце должно быть равно общему ко-
+    * личеству закрывающих скобок. Например, для строки 0(1)(2(3))4 метод
+    * parallelBalanceParentheses должен вернуть true , а для строк 0)2(1(3) и 0((1)2 –
+    * false . Используйте метод aggregate .
+    */
+
+  def parallelBalanceParentheses(s: String): Boolean = {
+    import scala.annotation.tailrec
+    @tailrec def recur(list: List[Int]): List[Int] = list match {
+      case Nil => Nil
+      case _ => {
+        val negs = list.takeWhile(_ < 0)
+        val other = list.dropWhile(_ < 0)
+        require(negs.nonEmpty, "negs must be nonEmpty")
+        require(other.nonEmpty && other.size >= negs.size, "poses must be ge that negs")
+        val otherAfterPosDropFromLeft = other.dropWhile(_ > 0)
+        val droppedFromLeftSize = other.size - otherAfterPosDropFromLeft.size
+        val needToDropFromRight = negs.size - droppedFromLeftSize
+        val rightDropped = otherAfterPosDropFromLeft.takeRight(needToDropFromRight)
+        require(rightDropped.size == needToDropFromRight && rightDropped.forall(_ > 0), "rightDropped.size == needToDropFromRight && rightDropped.forall(_ > 0)")
+        val otherAfterPosDropFromRight = otherAfterPosDropFromLeft.dropRight(needToDropFromRight)
+        val droppedFromRight = otherAfterPosDropFromLeft.size - otherAfterPosDropFromRight.size
+        require(droppedFromLeftSize + droppedFromRight == negs.size, s"droppedFromLeftSize:$droppedFromLeftSize + droppedFromRight$droppedFromRight must be eq negs.size:${negs.size}")
+        val rest = otherAfterPosDropFromRight
+        recur(rest)
+      }
+    }
+    val result = s.aggregate(List.empty[Int])(
+      (acc, char) => char match {
+        case '(' => -1 :: acc
+        case ')' => 1 :: acc
+        case _ => acc
+      },
+      (acc1,acc2) => acc1 ++ acc2
+    ).reverse
+
+    result match {
+      case Nil => true
+      case List(_) => false
+      case head :: tail if head == 1 || tail.last == -1 || result.size % 2 != 0 => false
+      case unstable if unstable.sum != 0 => false
+      case other =>
+        recur(other).isEmpty
+    }
+  }
+
+  val s1 = "0(1)(2(3))4"
+  val s2 = "0)2(1(3)"
+  val s3 = "0((1)2"
 }

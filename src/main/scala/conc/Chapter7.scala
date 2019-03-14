@@ -1,6 +1,6 @@
 package conc
 
-import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.{AtomicInteger, AtomicLong}
 
 import scala.collection.immutable.Queue
 import scala.concurrent.stm.Txn.RolledBack
@@ -222,5 +222,70 @@ object Chapter7 {
     * Наконец, реализуйте
     * метод totalStockIn , возвращающий общую сумму денег, в данный момент хранящихся на счетах заданной группы банков.
     */
+
+  type UserId = Long
+  type AccountId = Long
+  type MoneyType = String
+  type MoneyAmount = Int
+
+  case class Account(id: AccountId, moneyType: MoneyType, funds: MoneyAmount)
+  class Bank {
+    import scala.collection.immutable.{Seq ⇒ GSeq}
+    type Accounts = GSeq[Account]
+    private val db = TMap[UserId, Accounts]()
+    private val accountIdCounter = new AtomicLong()
+    private val defaultType: MoneyType = "USD"
+
+
+    def addUser(id: UserId): Option[Accounts] = atomic { implicit txn =>
+      if (db.contains(id)) throw new RuntimeException("id exist")
+      else db.put(id, GSeq(Account(accountIdCounter.incrementAndGet(), defaultType, 0)))
+    }
+
+    def getFunds(id: UserId): Accounts = db.single.get(id) match {
+      case Some(funds) => funds
+      case None => throw new RuntimeException("id not found")
+    }
+
+    def deposit(id: UserId, accountId: AccountId, amount: MoneyAmount): Unit = atomic { implicit txn =>
+      db.get(id) match {
+        case Some(accounts) =>
+          val index = accounts.indexWhere(_.id == accountId)
+          val acc = accounts(index)
+          db.update(id, accounts.updated(index, acc.copy(funds = acc.funds + amount)))
+        case None =>
+          throw new RuntimeException("id not found")
+      }
+    }
+
+    def withdraw(id: UserId, accountId: AccountId, amount: MoneyAmount): Unit = atomic { implicit txn =>
+      db.get(id) match {
+        case Some(accounts) => accounts.find(_.id == accountId) match {
+          case Some(account) if account.funds >= amount ⇒
+            val index = accounts.indexWhere(_.id == accountId)
+            val acc = accounts(index)
+            db.update(id, accounts.updated(index, acc.copy(funds = acc.funds - amount)))
+          case Some(account) ⇒ throw new RuntimeException(s"amount $amount > funds ${account.funds}")
+          case None ⇒ throw new RuntimeException("account id not found")
+        }
+        case None => throw new RuntimeException("id not found")
+      }
+    }
+
+    def send(from: (UserId,AccountId), to: (UserId,AccountId), amount: MoneyAmount) = atomic { implicit txn =>
+      val (fromUserId, fromAccountId) = from
+      val (toUserId, toAccountId) = to
+
+      (db.get(fromUserId), db.get(toUserId)) match {
+        case (Some(fromAccounts), Some(toAccounts))
+          if fromAccounts.exists(acc ⇒ acc.id == fromAccountId && acc.funds >= amount) && toAccounts.exists(_.id == toAccountId)  =>
+          withdraw(fromUserId,fromAccountId,amount)
+          deposit(toUserId, toAccountId, amount)
+        case (None, _) => throw new RuntimeException("id not found")
+        case (_, None) => throw new RuntimeException("id not found")
+        case (Some(fromFunds), Some(toFunds)) => throw new RuntimeException(s"amount $amount > funds $fromFunds")
+      }
+    }
+  }
 
 }

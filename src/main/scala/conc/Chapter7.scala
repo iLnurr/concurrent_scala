@@ -239,7 +239,10 @@ object Chapter7 {
 
     def addUser(id: UserId): Option[Accounts] = atomic { implicit txn =>
       if (db.contains(id)) throw new RuntimeException("id exist")
-      else db.put(id, GSeq(Account(accountIdCounter.incrementAndGet(), defaultType, 0)))
+      else {
+        db.put(id, GSeq(Account(accountIdCounter.incrementAndGet(), defaultType, 0)))
+        db.get(id)
+      }
     }
 
     def getFunds(id: UserId): Accounts = db.single.get(id) match {

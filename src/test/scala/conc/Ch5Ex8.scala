@@ -16,13 +16,13 @@ object Ch5Ex8 extends App {
   println(heap.remove)
 
   println("Merge")
-  val first = new BinomialHeap[Int]().insertAll(Seq(1,2,3,4,5):_*)
-  val sec = new BinomialHeap[Int]().insertAll(Seq(7,8,9):_*)
-  println(first)
-  println(sec)
-  println(first.merge(sec))
-
-  println(first.par.min)
+//  val first = new BinomialHeap[Int]().insertAll(Seq(1,2,3,4,5):_*)
+//  val sec = new BinomialHeap[Int]().insertAll(Seq(7,8,9):_*)
+//  println(first)
+//  println(sec)
+//  println(first.merge(sec))
+//
+//  println(first.par.min)
 
 
 

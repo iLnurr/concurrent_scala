@@ -44,18 +44,6 @@ object Ch10Test extends App {
 
   def crdtTest()= {
     type T = GCrdtReactorStateBased
-    type V = Long
-    class Values(r1: T, r2: T, r3: T){
-      r1.broadcastTo(r2,r3)
-      r2.broadcastTo(r1,r3)
-      r3.broadcastTo(r2,r1)
-      def apply(v1: V, v2: V, v3: V) = assert(
-        r1.value == v1 && r2.value == v2 && r3.value == v3,
-        s"""
-           |${r1.value} != $v1 || ${r2.value} != $v2 || ${r3.value} != $v3,
-         """.stripMargin
-      )
-    }
     def counterTest(r1: T, r2: T, r3: T) = {
       r1.broadcastTo(r2,r3)
       r2.broadcastTo(r1,r3)

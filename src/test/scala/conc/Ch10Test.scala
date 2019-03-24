@@ -42,4 +42,61 @@ object Ch10Test extends App {
 
   broadcastTest(channels)
 
+  def crdtTest()= {
+    type T = GCrdtReactorStateBased
+    type V = Long
+    class Values(r1: T, r2: T, r3: T){
+      r1.broadcastTo(r2,r3)
+      r2.broadcastTo(r1,r3)
+      r3.broadcastTo(r2,r1)
+      def apply(v1: V, v2: V, v3: V) = assert(
+        r1.value == v1 && r2.value == v2 && r3.value == v3,
+        s"""
+           |${r1.value} != $v1 || ${r2.value} != $v2 || ${r3.value} != $v3,
+         """.stripMargin
+      )
+    }
+    def counterTest(r1: T, r2: T, r3: T) = {
+      r1.broadcastTo(r2,r3)
+      r2.broadcastTo(r1,r3)
+      r3.broadcastTo(r2,r1)
+
+      r1.increment(1)
+      r2.increment(2)
+      r3.increment(4)
+      // Initial result works
+      assert(
+        r1.value == 1 && r2.value == 2 && r3.value == 4,
+        s"""
+           |${r1.value} != 1, ${r2.value} != 2, ${r3.value} != 4
+         """.stripMargin
+      )
+
+      Thread.sleep(4000)
+
+      assert(
+        r1.counterSnap(0) == 1 && r1.counterSnap(1) == 2 && r1.counterSnap(2) == 4,
+        s"""
+           |${r1.counterSnap(0)} != 1, ${r1.counterSnap(1)} != 2, ${r1.counterSnap(2)} != 4
+         """.stripMargin
+      )
+
+      // Merged result works
+      assert(
+        r1.value == 7 && r2.value == 7 && r3.value == 7,
+        s"""
+           |${r1.value} != 7 || ${r2.value} != 7 || ${r3.value} != 7
+         """.stripMargin
+      )
+
+      println(r1.counterSnap)
+      println(r2.counterSnap)
+      println(r3.counterSnap)
+    }
+
+    counterTest(new GCrdtReactorStateBased(0),new GCrdtReactorStateBased(1),new GCrdtReactorStateBased(2))
+  }
+
+  crdtTest()
+
 }

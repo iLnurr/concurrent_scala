@@ -1,6 +1,8 @@
 package conc
 
 import io.reactors._
+
+import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.duration._
 
@@ -59,4 +61,40 @@ object Chapter10 {
       }
     })
   }
+
+  /**
+    * Узнайте, как действует алгоритм счетчика CRDT (Convergent Replicated Data Types – Бесконфликтные репликативные структуры данных).
+    * Затем используйте ненадежный широковещательный протокол из предыдущего упражнения для его реализации.
+    * Определите метод crdt, позволяющий пользователям создавать счетчики CRDT.
+    */
+
+  class GCrdtReactorStateBased(id: Long)
+                              (implicit system: ReactorSystem) {
+    private val targets = ArrayBuffer[Channel[GCrdtReactorStateBased]]()
+    val channel: Channel[GCrdtReactorStateBased] = system.spawn(Reactor[GCrdtReactorStateBased] { self ⇒
+      self.main.events onEvent { t ⇒
+        println(s"receive event ${t.counterSnap}")
+        merge(t)
+      }
+    })
+    private val counter = mutable.Map[Long,Long](id → 0)
+    def counterSnap: Map[Long, Long] = counter.toMap
+    def broadcastTo(crdts: GCrdtReactorStateBased*): Unit = targets.appendAll(crdts.map(_.channel))
+    def increment(x: Long): Unit = {
+      counter(id) = counter(id) + x
+      targets.foreach(_ ! this)
+    }
+    def merge(other: GCrdtReactorStateBased): Unit = {
+      val otherMap = other.counterSnap
+      for {
+        (k,v) ← otherMap
+      } yield {
+        val old = counter.getOrElse(k,0L)
+        val newV = math.max(old,v)
+        counter.update(k,newV)
+      }
+    }
+    def value: Long = counter.valuesIterator.sum
+  }
+
 }

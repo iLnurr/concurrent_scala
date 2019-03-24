@@ -44,4 +44,19 @@ object Chapter10 {
       }
     })
   }
+
+  /**
+    * Реализуйте ненадежный широковещательный протокол, доставляющий события нескольким адресатам.
+    * Метод broadcast должен реализовать следующий интерфейс,
+    * где возвращаемый канал должен пересылать получаемые события во все целевые каналы:
+    * def broadcast(targets: Seq[Channel[T]]): Channel[T]
+    */
+  def broadcast[T: Arrayable](targets: Seq[Channel[T]])
+                             (implicit system: ReactorSystem): Channel[T] = {
+    system.spawn(Reactor[T] { self ⇒
+      self.main.events onEvent { t ⇒
+        targets.foreach(_ ! t)
+      }
+    })
+  }
 }

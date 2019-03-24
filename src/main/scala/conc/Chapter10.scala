@@ -116,6 +116,8 @@ object Chapter10 {
       })
       self.main.events onEvent { t ⇒
         msgs = msgs.mapValues(seq ⇒ seq :+ t)
+        println(s"after receive msgs ${msgs.mkString("\n")}")
+        println()
         injected.foreach(_ ! t)
       }
       confirmEvents.onEvent { case (ch,t) ⇒
@@ -125,6 +127,18 @@ object Chapter10 {
         } yield {
           buf.remove(buf.indexOf(t))
           msgs = msgs.updated(ch, buf)
+          println(s"after confirm msgs ${msgs.mkString("\n")}")
+          println()
+          msgs
+        }
+      }
+      self.system.clock.periodic(1.seconds) on {
+        println(s"try to resend msgs ${msgs.mkString("\n")}")
+        println()
+        for {
+          (ch, notSended) ← msgs
+        } yield {
+          notSended.foreach(msg ⇒ ch ! msg)
         }
       }
     })

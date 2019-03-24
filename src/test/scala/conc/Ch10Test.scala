@@ -40,8 +40,6 @@ object Ch10Test extends App {
     Thread.sleep(5000)
   }
 
-  broadcastTest(channels)
-
   def crdtTest()= {
     type T = GCrdtReactorStateBased
     def counterTest(r1: T, r2: T, r3: T) = {
@@ -85,6 +83,13 @@ object Ch10Test extends App {
     counterTest(new GCrdtReactorStateBased(0),new GCrdtReactorStateBased(1),new GCrdtReactorStateBased(2))
   }
 
-  crdtTest()
+  def broadcastReliableTest(channels: Seq[Channel[String]]) = {
+    val broadcastChannel = broadcastReliable(channels)
 
+    broadcastChannel ! "broadcast reliable message"
+
+    Thread.sleep(5000)
+  }
+
+  broadcastReliableTest(channels)
 }

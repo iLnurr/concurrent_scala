@@ -97,4 +97,41 @@ object Chapter10 {
     def value: Long = counter.valuesIterator.sum
   }
 
+  import protocol._
+  /**
+    * Реализуйте надежный широковещательный протокол, имеющий тот же интерфейс,
+    * что и ненадежный широковещательный протокол,
+    * но гарантирующий доставку всем или ни одному адресату,
+    * даже если отправитель аварийно завершился в процессе выполнения операции отправки.
+    * Реализуйте модульные тесты для проверки вашей реализации.
+    */
+  def broadcastReliable[T: Arrayable](targets: Seq[Channel[T]])
+                             (implicit system: ReactorSystem): Channel[T] = {
+    var msgs: Map[Channel[T], ArrayBuffer[T]] = targets.map(ch ⇒ ch → ArrayBuffer.empty[T]).toMap
+    system.spawn(Reactor[T] { self ⇒
+      val (confirmChannel, confirmEvents) = mkConnector[T, Channel[T]](self)
+
+      val injected = targets.map(ch ⇒ ch.inject{ t =>
+        confirmChannel ! (ch,t)
+      })
+      self.main.events onEvent { t ⇒
+        msgs = msgs.mapValues(seq ⇒ seq :+ t)
+        injected.foreach(_ ! t)
+      }
+      confirmEvents.onEvent { case (ch,t) ⇒
+        for {
+          buf ← msgs.get(ch)
+          if buf.indexOf(t) != -1
+        } yield {
+          buf.remove(buf.indexOf(t))
+          msgs = msgs.updated(ch, buf)
+        }
+      }
+    })
+  }
+
+  private def mkConnector[T,R: Arrayable](r: Reactor[T]) = {
+    val c = r.system.channels.open[(R,T)]
+    c.channel → c.events
+  }
 }

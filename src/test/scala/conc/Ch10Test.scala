@@ -6,7 +6,7 @@ import io.reactors._
 object Ch10Test extends App {
   implicit val testSystem: ReactorSystem = ReactorSystem.default("test-system")
 
-  def stringReactor(name: String) = Reactor[String] { self =>
+  def stringReactor(name: String): Proto[Reactor[String]] = Reactor[String] { self =>
     self.main.events onEvent { s ⇒
       println(s"$name stringReactor receive event: $s")
     }
@@ -16,7 +16,7 @@ object Ch10Test extends App {
   val stringChannel2 = testSystem.spawn(stringReactor("second"))
   val stringChannel3 = testSystem.spawn(stringReactor("third"))
 
-  val channels = Seq(stringChannel1,stringChannel2,stringChannel3)
+  val channels: Seq[Channel[String]] = Seq(stringChannel1,stringChannel2,stringChannel3)
 
   def twiceTest(): Unit = {
     twice(stringChannel1) ! "Test"

@@ -4,6 +4,7 @@ object Dependencies {
   object Versions {
     val refined = "0.9.3"
     val cats = "1.4.0"
+    val reactors = "0.8"
   }
   
   lazy val refined = Seq(
@@ -21,5 +22,9 @@ object Dependencies {
   
   lazy val scalaStm = Seq(
     "org.scala-stm" %% "scala-stm" % "0.8"
+  )
+  
+  lazy val reactors = Seq(
+    "io.reactors" %% "reactors" % Versions.reactors
   )
 }

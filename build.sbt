@@ -11,4 +11,4 @@ resolvers ++= Seq(
   "Sonatype OSS Releases" at "https://oss.sonatype.org/content/repositories/releases"
 )
 
-libraryDependencies ++= refined ++ cats ++ scalaAsync ++ scalaStm ++ Seq("io.reactors" %% "reactors" % "0.8")
+libraryDependencies ++= refined ++ cats ++ scalaAsync ++ scalaStm ++ reactors

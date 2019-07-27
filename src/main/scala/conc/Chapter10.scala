@@ -115,8 +115,9 @@ object Chapter10 {
         confirmChannel ! (ch,t)
       })
       self.main.events onEvent { t ⇒
+        println(s"self: got event (${t})")
         msgs = msgs.mapValues(seq ⇒ seq :+ t)
-        println(s"after receive msgs ${msgs.mkString("\n")}")
+        println(s"self: buffer after receive msgs ${msgs.mkString("\n")}")
         println()
         injected.foreach(_ ! t)
       }
@@ -125,15 +126,16 @@ object Chapter10 {
           buf ← msgs.get(ch)
           if buf.indexOf(t) != -1
         } yield {
+          println(s"confirmEvents: got msg (${ch} -> ${t})")
           buf.remove(buf.indexOf(t))
           msgs = msgs.updated(ch, buf)
-          println(s"after confirm msgs ${msgs.mkString("\n")}")
+          println(s"confirmEvents: buffer after confirm msgs ${msgs.mkString("\n")}")
           println()
           msgs
         }
       }
       self.system.clock.periodic(1.seconds) on {
-        println(s"check msgs to resend ${msgs.mkString("\n")}")
+        println(s"clock: check msgs to resend buffer: ${msgs.mkString("\n")}")
         println()
         for {
           (ch, notSended) ← msgs
@@ -144,7 +146,7 @@ object Chapter10 {
     })
   }
 
-  private def mkConnector[T,R: Arrayable](r: Reactor[T]) = {
+  private def mkConnector[T,R: Arrayable](r: Reactor[T]): (Channel[(R, T)], Events[(R, T)]) = {
     val c = r.system.channels.open[(R,T)]
     c.channel → c.events
   }

@@ -133,7 +133,7 @@ object Chapter10 {
         }
       }
       self.system.clock.periodic(1.seconds) on {
-        println(s"try to resend msgs ${msgs.mkString("\n")}")
+        println(s"check msgs to resend ${msgs.mkString("\n")}")
         println()
         for {
           (ch, notSended) ← msgs
